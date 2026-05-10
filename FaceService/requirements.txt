@@ -1,0 +1,5 @@
+face-recognition
+opencv-python
+pywin32
+pycryptodome
+pysqlcipher3

@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\CLSID\{FACE1000-0001-0001-0001-000000000001}]
+@="FACELOOK Credential Provider"
+
+[HKEY_CLASSES_ROOT\CLSID\{FACE1000-0001-0001-0001-000000000001}\InprocServer32]
+@="C:\\FACELOOK\\CredentialProvider\\FacelookProvider.dll"
+"ThreadingModel"="Apartment"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{FACE1000-0001-0001-0001-000000000001}]
+@="FACELOOK"

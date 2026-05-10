@@ -1,40 +1,40 @@
 import os, time, ctypes
 
-LOCK_DELAY = 10          # seconds
+LOCK_DELAY = 10
 TIMESTAMP_FILE = r"C:\FACELOOK\Logs\last_face.txt"
 
-print("Auto‑lock watcher started. Watching for face activity...")
+print("Debug Auto‑Lock started. Press Ctrl+C to stop.")
+last_face_time = time.time()
 
 while True:
     current_time = time.time()
-    last_face_time = current_time      # fallback if file is missing/empty
-
+    # Read latest timestamp
     try:
         if os.path.exists(TIMESTAMP_FILE):
             with open(TIMESTAMP_FILE, "r") as f:
                 content = f.read().strip()
                 if content:
                     last_face_time = float(content)
-    except:
-        pass
+                    print(f"[DEBUG] Update from file: last_face_time = {last_face_time:.0f} (age: {current_time - last_face_time:.1f}s)")
+    except Exception as e:
+        print(f"[ERROR] reading file: {e}")
 
-    # Only lock if enough time has passed AND the workstation is not already locked
-    if current_time - last_face_time > LOCK_DELAY:
-        # Is the workstation locked? GetForegroundWindow returns NULL on secure desktop
+    age = current_time - last_face_time
+    if age > LOCK_DELAY:
         hwnd = ctypes.windll.user32.GetForegroundWindow()
-        if hwnd != 0:   # unlocked
-            print("No face detected for 10 seconds – locking workstation.")
+        locked = (hwnd == 0)
+        print(f"[DEBUG] Age > {LOCK_DELAY}s. Locked? {locked}. hwnd={hwnd}")
+        if not locked:
+            print(">>> Locking workstation now <<<")
             ctypes.windll.user32.LockWorkStation()
-            time.sleep(5)            # prevent immediate re‑lock after unlock
-            # Reset fallback so we don't lock again immediately after coming back
+            time.sleep(5)
+            # after lock, reset timer to avoid immediate re‑lock
             try:
                 with open(TIMESTAMP_FILE, "r") as f:
                     val = f.read().strip()
                     if val:
                         last_face_time = float(val)
+                        print(f"[DEBUG] After lock, timestamp reset to {last_face_time:.0f}")
             except:
                 last_face_time = time.time()
-        else:
-            pass   # already locked, do nothing
-
     time.sleep(1)

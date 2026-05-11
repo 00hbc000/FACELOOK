@@ -61,6 +61,13 @@ def add_user(username, password, embedding):
     conn.commit(); conn.close()
     return guid
 
+def delete_user(guid):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM users WHERE user_guid = ?", (guid,))
+    conn.commit()
+    conn.close()
+    return True
+
 def get_all_users():
     conn = get_db_connection()
     cur = conn.execute("SELECT user_guid, username, embedding, encrypted_password, salt FROM users")

@@ -3,6 +3,14 @@ import win32serviceutil, win32service, win32event, servicemanager
 
 TIMESTAMP_FILE = r"C:\FACELOOK\Logs\last_face.txt"
 LOCK_DELAY = 10
+LOG_FILE = r"C:\FACELOOK\Logs\auto_lock.log"
+
+def write_log(msg):
+    try:
+        with open(LOG_FILE, "a") as logf:
+            logf.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n")
+    except:
+        pass
 
 class AutoLockService(win32serviceutil.ServiceFramework):
     _svc_name_ = "FACELOOKAutoLock"
@@ -23,10 +31,11 @@ class AutoLockService(win32serviceutil.ServiceFramework):
         servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE,
                               servicemanager.PYS_SERVICE_STARTED,
                               (self._svc_name_, ''))
+        write_log("Service started.")
         self.main()
 
     def main(self):
-        # ----- Read the timestamp file first, else fall back to now -----
+        # Initialise last_face_time from the file, or use current time
         last_face_time = time.time()
         try:
             if os.path.exists(TIMESTAMP_FILE):
@@ -34,33 +43,37 @@ class AutoLockService(win32serviceutil.ServiceFramework):
                     content = f.read().strip()
                     if content:
                         last_face_time = float(content)
-        except:
-            pass
+        except Exception as e:
+            write_log(f"Error reading initial timestamp: {e}")
+
+        write_log(f"Initial last_face_time = {last_face_time:.0f}")
 
         while self.running:
             if win32event.WaitForSingleObject(self.hWaitStop, 1000) == win32event.WAIT_OBJECT_0:
+                write_log("Stop event received.")
                 break
 
             current_time = time.time()
-            # Re‑read the timestamp file every loop
+            # Re‑read the timestamp file
             try:
                 if os.path.exists(TIMESTAMP_FILE):
                     with open(TIMESTAMP_FILE, "r") as f:
                         content = f.read().strip()
                         if content:
                             last_face_time = float(content)
-            except:
-                pass
+            except Exception as e:
+                write_log(f"Error reading timestamp: {e}")
 
             age = current_time - last_face_time
-            print(f"[DEBUG] age={age:.1f}s, last_face_time={last_face_time:.0f}, locked={ctypes.windll.user32.GetForegroundWindow()==0}")
             if age > LOCK_DELAY:
                 hwnd = ctypes.windll.user32.GetForegroundWindow()
-                if hwnd != 0:   # unlocked
-                    servicemanager.LogInfoMsg("No face detected – locking workstation")
+                locked = (hwnd == 0)
+                write_log(f"Age={age:.1f}s, Locked={locked}")
+                if not locked:
+                    write_log("Locking workstation now.")
                     ctypes.windll.user32.LockWorkStation()
                     time.sleep(5)
-                    # After locking, reset timer from file to avoid immediate re‑lock
+                    # Reset timer after lock
                     try:
                         if os.path.exists(TIMESTAMP_FILE):
                             with open(TIMESTAMP_FILE, "r") as f:
@@ -69,6 +82,10 @@ class AutoLockService(win32serviceutil.ServiceFramework):
                                     last_face_time = float(val)
                     except:
                         last_face_time = time.time()
+                # else: already locked, do nothing
+            # else: not yet expired
+
+        write_log("Service stopped.")
 
 if __name__ == '__main__':
     win32serviceutil.HandleCommandLine(AutoLockService)

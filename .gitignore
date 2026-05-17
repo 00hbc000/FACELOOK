@@ -1,7 +1,0 @@
-Config\secret.key 
-Database\ 
-Logs\ 
-*.dll 
-*.obj 
-CredentialProvider\x64\ 
-Hodor 
